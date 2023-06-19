@@ -54,7 +54,7 @@ func main() {
 	router := gin.Default()
 	router.POST("/recipes", NewRecipeHandler)
 	router.GET("/recipes", ListRecipesHandler)
-	// router.PUT("/recipes/:id", UpdateRecipeHandler)
+	router.PUT("/recipes/:id", UpdateRecipeHandler)
 	// router.DELETE("/recipes/:id", DeleteRecipeHandler)
 	// router.GET("/recipes/search", SearchRecipesHandler)
 
@@ -118,5 +118,62 @@ func NewRecipeHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, recipe)
+	// recipe.ID = xid.New().String()
+	// recipe.PublishedAt = time.Now()
+	// recipes = append(recipes, recipe)
+	// c.JSON(http.StatusOK, recipe)
+
+}
+
+// swagger:operation PUT /recipes/{id} recipes updateRecipe
+// Update an existing recipe
+// ---
+// parameters:
+// - name: id
+//    in: path
+//    description: ID of the recipe
+//    required: true
+//    type: string
+// produces:
+// - application/json
+
+// responses:
+
+// 200:
+//
+//	description: Successful operation
+//
+// 400:
+//
+//	description: Invalid input
+//
+// 404:
+//
+//	description: Invalid recipe ID
+func UpdateRecipeHandler(c *gin.Context) {
+	id := c.Param("id")
+	var recipe Recipe
+
+	if err := c.ShouldBindJSON(&recipe); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	objectId, _ := primitive.ObjectIDFromHex(id)
+	_, err = collection.UpdateOne(ctx, bson.M{
+		"_id": objectId,
+	}, bson.D{{Key: "$set", Value: bson.D{
+		{Key: "name", Value: recipe.Name},
+		{Key: "instructions", Value: recipe.Instructions},
+		{Key: "ingredients", Value: recipe.Ingredients},
+		{Key: "tags", Value: recipe.Tags},
+	}}})
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Recipe has been updated"})
 
 }
