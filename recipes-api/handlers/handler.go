@@ -93,6 +93,10 @@ func (handler *RecipesHandler) NewRecipeHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new recipe"})
 		return
 	}
+
+	log.Println("Remove data from Redis")
+
+	handler.redisClient.Del(handler.ctx, "recipes")
 	c.JSON(http.StatusOK, recipe)
 
 }
