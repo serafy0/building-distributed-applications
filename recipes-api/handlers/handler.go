@@ -150,6 +150,10 @@ func (handler *RecipesHandler) UpdateRecipeHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Println("Remove data from Redis")
+
+	handler.redisClient.Del(handler.ctx, "recipes")
+
 	c.JSON(http.StatusOK, gin.H{"message": "Recipe has been updated"})
 
 }
@@ -162,6 +166,10 @@ func (handler *RecipesHandler) DeleteRecipeHandler(c *gin.Context) {
 		fmt.Print(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
+	log.Println("Remove data from Redis")
+
+	handler.redisClient.Del(handler.ctx, "recipes")
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Recipe has been deleted",
 	})
