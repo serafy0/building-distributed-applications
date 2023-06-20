@@ -66,8 +66,6 @@ func main() {
 	{
 		authorized.POST("/recipes",
 			recipesHandler.NewRecipeHandler)
-		authorized.GET("/recipes",
-			recipesHandler.ListRecipesHandler)
 		authorized.PUT("/recipes/:id",
 			recipesHandler.UpdateRecipeHandler)
 		authorized.DELETE("/recipes/:id",
