@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"recipes-api/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -192,4 +194,22 @@ func (handler *RecipesHandler) SearchRecipesHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, recipes)
 
+}
+
+func (handler *AuthHandler) AuthMiddleware() gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+		tokenValue := c.GetHeader("Authorization")
+		claims := &Claims{}
+		tkn, err := jwt.ParseWithClaims(tokenValue, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+		}
+		if tkn == nil || !tkn.Valid {
+			c.AbortWithStatus(http.StatusUnauthorized)
+		}
+		c.Next()
+	}
 }

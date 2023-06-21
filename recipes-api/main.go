@@ -29,6 +29,7 @@ import (
 )
 
 var recipesHandler *handlers.RecipesHandler
+var authHandler *handlers.AuthHandler
 
 func init() {
 
@@ -54,15 +55,17 @@ func init() {
 	fmt.Println(status)
 
 	recipesHandler = handlers.NewRecipeHandler(ctx, collection, redisClient)
+	authHandler = &handlers.AuthHandler{}
 }
 
 func main() {
 
 	router := gin.Default()
 	router.GET("/recipes", recipesHandler.ListRecipesHandler)
+	router.POST("/signin", authHandler.SignInHandler)
 
 	authorized := router.Group("/")
-	authorized.Use(AuthMiddleware())
+	authorized.Use(authHandler.AuthMiddleware())
 	{
 		authorized.POST("/recipes",
 			recipesHandler.NewRecipeHandler)
@@ -72,15 +75,4 @@ func main() {
 			recipesHandler.DeleteRecipeHandler)
 	}
 	router.Run()
-}
-
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.GetHeader("X-API-KEY") != os.Getenv("X_API_KEY") {
-			c.AbortWithStatus(401)
-		}
-		c.Next()
-
-	}
-
 }
