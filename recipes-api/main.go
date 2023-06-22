@@ -21,6 +21,8 @@ import (
 	"os"
 	"recipes-api/handlers"
 
+	"github.com/gin-contrib/sessions"
+	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -63,9 +65,13 @@ func init() {
 func main() {
 
 	router := gin.Default()
+	store, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte("secret"))
+	router.Use(sessions.Sessions("recipes_api", store))
 	router.GET("/recipes", recipesHandler.ListRecipesHandler)
 	router.POST("/signin", authHandler.SignInHandler)
+	router.POST("/signout", authHandler.SignOutHandler)
 	router.POST("/refresh", authHandler.RefreshHandler)
+	router.GET("recipes/:tag", recipesHandler.SearchRecipesHandler)
 
 	authorized := router.Group("/")
 	authorized.Use(authHandler.AuthMiddleware())
@@ -76,6 +82,7 @@ func main() {
 			recipesHandler.UpdateRecipeHandler)
 		authorized.DELETE("/recipes/:id",
 			recipesHandler.DeleteRecipeHandler)
+
 	}
 	router.Run()
 }

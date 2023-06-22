@@ -8,8 +8,10 @@ import (
 	"recipes-api/models"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -46,51 +48,42 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	}
 
 	h := sha256.New()
-	cur := handler.collection.FindOne(handler.ctx, bson.M{"username": user.Username, "password": string(h.Sum([]byte(user.Password)))})
+	cur := handler.collection.FindOne(handler.ctx, bson.M{"username": user.Username,
+		"password": string(h.Sum([]byte(user.Password))),
+	})
 	if cur.Err() != nil {
+		println(cur.Err().Error())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
+	sessionToken := xid.New().String()
+	session := sessions.Default(c)
+	session.Set("username", user.Username)
+	session.Set("token", sessionToken)
+	session.Save()
 
-	if user.Username != "admin" || user.Password != "password" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-		return
-	}
+	c.JSON(http.StatusOK, gin.H{"message": "User signed in"})
 
-	expirationTime := time.Now().Add(10 * time.Minute)
-	claims := &Claims{
-		Username: user.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	JWTOutput := JWTOutput{
-		Token:   tokenString,
-		Expires: expirationTime,
-	}
-	c.JSON(http.StatusOK, JWTOutput)
+}
+
+func (handler *AuthHandler) SignOutHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	session.Clear()
+	session.Save()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Signed Out..."})
 }
 
 func (handler *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
-		tokenValue := c.GetHeader("Authorization")
-		claims := &Claims{}
-		tkn, err := jwt.ParseWithClaims(tokenValue, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
-		if err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
+		session := sessions.Default(c)
+		sessionToken := session.Get("token")
+		if sessionToken == nil {
+			c.JSON(http.StatusForbidden, gin.H{"message": "Not logged"})
+			c.Abort()
 		}
-		if tkn == nil || !tkn.Valid {
-			c.AbortWithStatus(http.StatusUnauthorized)
-		}
+
 		c.Next()
 	}
 }
