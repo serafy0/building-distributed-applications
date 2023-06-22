@@ -55,7 +55,9 @@ func init() {
 	fmt.Println(status)
 
 	recipesHandler = handlers.NewRecipeHandler(ctx, collection, redisClient)
-	authHandler = &handlers.AuthHandler{}
+	collectionUsers := client.Database(os.Getenv("MONGO_DATABASE")).Collection("users")
+	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
+
 }
 
 func main() {
