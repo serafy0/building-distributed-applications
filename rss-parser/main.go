@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/xml"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Feed struct {
@@ -43,6 +48,14 @@ func GetFeedEntries(url string) ([]Entry, error) {
 
 }
 
+var client *mongo.Client
+var ctx context.Context
+
+func init() {
+	ctx = context.Background()
+	client, _ = mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+}
+
 func main() {
 	router := gin.Default()
 	router.POST("/parse", ParserHandler)
@@ -65,6 +78,14 @@ func ParserHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while parsing the rss feed"})
 		return
+	}
+	collection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("recipes")
+	for _, entry := range entries[2:] {
+		collection.InsertOne(ctx, bson.M{
+			"title":     entry.Title,
+			"thumbnail": entry.Thumbnail.URL,
+			"url":       entry.Link.Href,
+		})
 	}
 	c.JSON(http.StatusOK, entries)
 }
