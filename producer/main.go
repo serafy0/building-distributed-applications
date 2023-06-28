@@ -39,8 +39,9 @@ func ParserHandler(c *gin.Context) {
 		return
 	}
 	data, _ := json.Marshal(request)
-	err := channelAmqp.Publish("",
-		"RABBITMQ_QUEUE",
+	err := channelAmqp.Publish(
+		"",
+		os.Getenv("RABBITMQ_QUEUE"),
 		false,
 		false,
 		amqp.Publishing{
